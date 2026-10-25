@@ -1,0 +1,533 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#123d32">
+<title>Bint-e-Mustafa — The Journal</title>
+<meta name="description" content="Stories, reflections and ideas from Bint-e-Mustafa.">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--green:#123d32;--green2:#285c48;--gold:#c6a45b;--cream:#faf7ef;--paper:#fffdf8;--ink:#29362f;--muted:#727a72;--line:#e7dfd0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:Georgia,"Times New Roman",serif;line-height:1.65}
+button,input,textarea{font:inherit}button{cursor:pointer}
+header{background:var(--green);color:white;padding:24px 6%;border-bottom:3px solid var(--gold)}
+.head,main{max-width:1100px;margin:auto}
+.head{display:flex;align-items:center;justify-content:space-between;gap:18px}
+h1{font-size:clamp(23px,4vw,35px);margin:0}
+h1 span,.gold{color:var(--gold)}
+.tagline{margin:4px 0 0;color:#e5e3d9;font-size:14px}
+main{padding:0 22px}
+.hero{text-align:center;padding:65px 0 38px}
+.eyebrow{color:#9a7938;text-transform:uppercase;letter-spacing:3px;font:12px Arial,sans-serif}
+.hero h2{color:var(--green);font-size:clamp(32px,5vw,52px);line-height:1.2;margin:14px 0}
+.hero p{max-width:650px;margin:auto;color:var(--muted)}
+button{border-radius:7px;padding:10px 15px}
+.primary,.read{background:var(--green);color:white;border:1px solid var(--green)}
+.secondary,.admin{background:transparent;color:var(--green);border:1px solid var(--gold)}
+.admin{color:white}
+.tools{display:flex;gap:12px;margin:25px 0}
+input,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:7px;background:white;color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:11px;overflow:hidden;display:flex;flex-direction:column}
+.cover{height:145px;display:grid;place-items:center;background:linear-gradient(135deg,var(--green),#578068);color:#e8d39e;font-size:38px}
+.copy{padding:20px;display:flex;flex-direction:column;flex:1}
+.copy h3{color:var(--green);font-size:23px;line-height:1.3;margin:9px 0}
+.copy p{color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.read{align-self:flex-start;margin-top:auto}
+.status,.empty{text-align:center;padding:25px 10px;color:var(--muted)}
+.panel{background:white;border:1px solid var(--line);border-radius:12px;padding:24px;margin:35px 0}
+.panel h2{color:var(--green);margin-top:0}
+.hidden{display:none!important}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.full{grid-column:1/-1}
+label{font:13px Arial,sans-serif;color:var(--green)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.item{border-top:1px solid var(--line);padding:14px 0;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.item small{color:var(--muted)}
+.itemactions{display:flex;gap:6px;flex-wrap:wrap}
+footer{margin-top:70px;padding:32px 20px;text-align:center;background:var(--green);color:white}
+dialog{width:min(760px,calc(100% - 24px));max-height:88vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:26px;background:var(--paper);color:var(--ink)}
+dialog::backdrop{background:#091d17c9}
+.articlebody{white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.head{align-items:flex-start;flex-direction:column}.grid,.formgrid{grid-template-columns:1fr}.full{grid-column:auto}.hero{padding-top:40px}.item{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <div class="head">
+    <div>
+      <h1>Bint-e-Mustafa <span>— The Journal</span></h1>
+      <p class="tagline">A quiet corner for stories, thoughts and reflections.</p>
+    </div>
+    <button class="admin" id="adminToggle">Admin Login</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="eyebrow">Welcome to the journal</div>
+    <h2>Words that stay with you.</h2>
+    <p>Thoughtful stories, meaningful reflections and ideas worth sharing.</p>
+  </section>
+
+  <section>
+    <div class="tools">
+      <input id="search" type="search" placeholder="Search articles..." aria-label="Search articles">
+    </div>
+    <p class="status" id="publicStatus">Connecting to your journal...</p>
+    <div class="grid" id="articles"></div>
+    <p class="empty hidden" id="empty">No published articles yet. Please visit again soon.</p>
+  </section>
+
+  <section class="panel hidden" id="adminPanel">
+    <h2>Journal Admin</h2>
+    <p id="message">Sign in with your Supabase admin account.</p>
+
+    <form id="loginForm">
+      <div class="formgrid">
+        <div class="field full">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="username" required>
+        </div>
+        <div class="field full">
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" required>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" type="submit">Sign in</button>
+      </div>
+    </form>
+
+    <div class="actions hidden" id="adminActions">
+      <button class="primary" id="newArticle" type="button">+ Write an article</button>
+      <button class="secondary" id="logout" type="button">Sign out</button>
+    </div>
+
+    <form id="articleForm" class="hidden">
+      <h3 id="formTitle">New article</h3>
+      <input id="editId" type="hidden">
+      <div class="formgrid">
+        <div class="field full">
+          <label for="title">Article title</label>
+          <input id="title" maxlength="180" required>
+        </div>
+        <div class="field full">
+          <label for="slug">Article URL slug</label>
+          <input id="slug" maxlength="180" required>
+        </div>
+        <div class="field full">
+          <label for="excerpt">Short introduction</label>
+          <textarea id="excerpt" rows="3" maxlength="500" required></textarea>
+        </div>
+        <div class="field full">
+          <label for="content">Full article</label>
+          <textarea id="content" rows="12" required></textarea>
+        </div>
+        <div class="field full">
+          <label><input id="published" type="checkbox" style="width:auto"> Publish this article publicly</label>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" type="submit">Save article</button>
+        <button class="secondary" type="button" id="cancel">Cancel</button>
+      </div>
+    </form>
+
+    <h3>Your articles</h3>
+    <div id="manageList"></div>
+  </section>
+</main>
+
+<footer>
+  <div>Bint-e-Mustafa <span class="gold">— The Journal</span></div>
+  <small>Stories, reflections and ideas, shared with care.</small>
+</footer>
+
+<dialog id="reader">
+  <div style="text-align:right"><button class="secondary" id="closeReader">Close ✕</button></div>
+  <div class="eyebrow">Bint-e-Mustafa — The Journal</div>
+  <h2 id="readerTitle"></h2>
+  <p id="readerExcerpt"></p>
+  <hr style="border:0;border-top:1px solid var(--line)">
+  <div class="articlebody" id="readerContent"></div>
+  <div class="actions"><button class="primary" id="share">Share article</button></div>
+</dialog>
+
+<script>
+/* =====================================================
+   SUPABASE SETUP
+   Paste your own existing project URL and publishable key
+   in the two lines below. Do not use a secret/service key.
+   ===================================================== */
+
+const SUPABASE_URL = "https://kufzvyqzuglehmewlood.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_LI2uB1X0JGbgF2ssMVwmow_2TBrgWGt";
+
+const configured =
+  SUPABASE_URL.startsWith("https://") &&
+  !SUPABASE_URL.includes("PASTE_") &&
+  SUPABASE_PUBLISHABLE_KEY &&
+  !SUPABASE_PUBLISHABLE_KEY.includes("PASTE_");
+
+const db = configured
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+  : null;
+
+const $ = id => document.getElementById(id);
+let publicArticles = [];
+let signedIn = false;
+let currentArticle = null;
+let slugEdited = false;
+
+function say(text) {
+  $("message").textContent = text;
+}
+
+function escapeHTML(value = "") {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[c]);
+}
+
+function makeSlug(value) {
+  return value.toLowerCase().trim()
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    .slice(0, 180);
+}
+
+async function loadPublicArticles() {
+  if (!db) {
+    $("publicStatus").textContent =
+      "Setup required: add your Supabase URL and publishable key in the script at the bottom of this file.";
+    return;
+  }
+
+  $("publicStatus").textContent = "Loading published articles...";
+
+  const { data, error } = await db
+    .from("articles")
+    .select("id,title,slug,excerpt,content,published,created_at")
+    .eq("published", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    $("publicStatus").textContent =
+      "Could not load articles. Check your database columns and Supabase policies.";
+    return;
+  }
+
+  publicArticles = data || [];
+  renderPublicArticles();
+
+  $("publicStatus").textContent = publicArticles.length
+    ? `${publicArticles.length} published article(s)`
+    : "Your journal is ready for its first article.";
+
+  const requested = new URLSearchParams(location.search).get("article");
+  if (requested) openArticle(requested, false);
+}
+
+function renderPublicArticles() {
+  const query = $("search").value.toLowerCase().trim();
+  const results = publicArticles.filter(a =>
+    `${a.title || ""} ${a.excerpt || ""} ${a.content || ""}`
+      .toLowerCase().includes(query)
+  );
+
+  $("articles").innerHTML = results.map(a => `
+    <article class="card">
+      <div class="cover" aria-hidden="true">✦</div>
+      <div class="copy">
+        <div class="eyebrow">Journal</div>
+        <h3>${escapeHTML(a.title)}</h3>
+        <p>${escapeHTML(a.excerpt)}</p>
+        <button class="read" data-read="${escapeHTML(a.slug)}">Read article →</button>
+      </div>
+    </article>
+  `).join("");
+
+  $("empty").classList.toggle("hidden", results.length > 0);
+}
+
+$("search").addEventListener("input", renderPublicArticles);
+
+$("articles").addEventListener("click", event => {
+  const button = event.target.closest("[data-read]");
+  if (button) openArticle(button.dataset.read);
+});
+
+function openArticle(slug, updateAddress = true) {
+  const article = publicArticles.find(a => a.slug === slug);
+  if (!article) return;
+
+  currentArticle = article;
+  $("readerTitle").textContent = article.title || "";
+  $("readerExcerpt").textContent = article.excerpt || "";
+  $("readerContent").textContent = article.content || "";
+  $("reader").showModal();
+
+  if (updateAddress) {
+    const url = new URL(location.href);
+    url.searchParams.set("article", slug);
+    history.replaceState({}, "", url);
+  }
+}
+
+$("closeReader").addEventListener("click", () => {
+  $("reader").close();
+  const url = new URL(location.href);
+  url.searchParams.delete("article");
+  history.replaceState({}, "", url);
+});
+
+$("share").addEventListener("click", async () => {
+  if (!currentArticle) return;
+  const url = new URL(location.href);
+  url.searchParams.set("article", currentArticle.slug);
+
+  try {
+    if (navigator.share) {
+      await navigator.share({title: currentArticle.title, url: url.toString()});
+    } else {
+      await navigator.clipboard.writeText(url.toString());
+      alert("Article link copied.");
+    }
+  } catch (error) {
+    console.log("Share cancelled or unavailable.", error);
+  }
+});
+
+$("adminToggle").addEventListener("click", () => {
+  $("adminPanel").classList.toggle("hidden");
+  $("adminPanel").scrollIntoView({behavior:"smooth", block:"start"});
+});
+
+function signedOutUI() {
+  signedIn = false;
+  $("loginForm").classList.remove("hidden");
+  $("adminActions").classList.add("hidden");
+  $("articleForm").classList.add("hidden");
+  $("manageList").innerHTML = "";
+  say("Sign in with your Supabase admin account.");
+}
+
+async function checkAdmin() {
+  if (!db) return signedOutUI();
+
+  const { data: sessionResult } = await db.auth.getSession();
+  const user = sessionResult.session?.user;
+
+  if (!user) {
+    signedOutUI();
+    return;
+  }
+
+  const { data: admin, error } = await db
+    .from("admin_users")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error || !admin) {
+    signedIn = false;
+    $("loginForm").classList.add("hidden");
+    $("adminActions").classList.add("hidden");
+    $("articleForm").classList.add("hidden");
+    say("Signed in, but this account is not listed as a journal admin. Check admin_users and its read policy.");
+    return;
+  }
+
+  signedIn = true;
+  $("loginForm").classList.add("hidden");
+  $("adminActions").classList.remove("hidden");
+  say("Admin login successful. You can manage your articles.");
+  await loadManageList();
+}
+
+$("loginForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!db) return say("Add your Supabase URL and publishable key first.");
+
+  say("Signing in...");
+  const { error } = await db.auth.signInWithPassword({
+    email: $("email").value.trim(),
+    password: $("password").value
+  });
+
+  $("password").value = "";
+  if (error) {
+    say("Login failed: " + error.message);
+    return;
+  }
+
+  await checkAdmin();
+});
+
+$("logout").addEventListener("click", async () => {
+  if (db) await db.auth.signOut();
+  signedOutUI();
+});
+
+$("newArticle").addEventListener("click", () => {
+  $("articleForm").reset();
+  $("editId").value = "";
+  $("formTitle").textContent = "Write a new article";
+  slugEdited = false;
+  $("articleForm").classList.remove("hidden");
+  $("articleForm").scrollIntoView({behavior:"smooth", block:"start"});
+});
+
+$("title").addEventListener("input", () => {
+  if (!slugEdited) $("slug").value = makeSlug($("title").value);
+});
+$("slug").addEventListener("input", () => { slugEdited = true; });
+
+$("cancel").addEventListener("click", () => {
+  $("articleForm").reset();
+  $("editId").value = "";
+  $("articleForm").classList.add("hidden");
+});
+
+$("articleForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!db || !signedIn) return say("Please sign in with your admin account first.");
+
+  const id = $("editId").value;
+  const record = {
+    title: $("title").value.trim(),
+    slug: makeSlug($("slug").value),
+    excerpt: $("excerpt").value.trim(),
+    content: $("content").value.trim(),
+    published: $("published").checked
+  };
+
+  if (!record.title || !record.slug || !record.excerpt || !record.content) {
+    return say("Please complete every field.");
+  }
+
+  say("Saving article...");
+
+  const result = id
+    ? await db.from("articles").update(record).eq("id", id)
+    : await db.from("articles").insert(record);
+
+  if (result.error) {
+    say("Could not save: " + result.error.message);
+    return;
+  }
+
+  say(record.published ? "Article published successfully." : "Article saved as a draft.");
+  $("articleForm").reset();
+  $("editId").value = "";
+  $("articleForm").classList.add("hidden");
+  await loadManageList();
+  await loadPublicArticles();
+});
+
+async function loadManageList() {
+  if (!db || !signedIn) return;
+
+  const { data, error } = await db
+    .from("articles")
+    .select("id,title,slug,published")
+    .order("created_at", {ascending:false});
+
+  if (error) {
+    $("manageList").textContent = "Could not load articles: " + error.message;
+    return;
+  }
+
+  $("manageList").innerHTML = (data || []).map(a => `
+    <div class="item">
+      <div>
+        <strong>${escapeHTML(a.title)}</strong><br>
+        <small>${a.published ? "Published" : "Draft"} · ${escapeHTML(a.slug)}</small>
+      </div>
+      <div class="itemactions">
+        <button class="secondary" data-edit="${a.id}">Edit</button>
+        <button class="secondary" data-toggle="${a.id}" data-pub="${a.published}">
+          ${a.published ? "Unpublish" : "Publish"}
+        </button>
+        <button class="secondary" data-delete="${a.id}">Delete</button>
+      </div>
+    </div>
+  `).join("") || "<p>No articles yet. Click Write an article to start.</p>";
+}
+
+$("manageList").addEventListener("click", async event => {
+  if (!db || !signedIn) return;
+
+  const edit = event.target.closest("[data-edit]");
+  const toggle = event.target.closest("[data-toggle]");
+  const del = event.target.closest("[data-delete]");
+
+  if (edit) {
+    const {data, error} = await db.from("articles")
+      .select("id,title,slug,excerpt,content,published")
+      .eq("id", edit.dataset.edit).single();
+
+    if (error || !data) return say("Could not load this article.");
+
+    $("editId").value = data.id;
+    $("title").value = data.title || "";
+    $("slug").value = data.slug || "";
+    $("excerpt").value = data.excerpt || "";
+    $("content").value = data.content || "";
+    $("published").checked = !!data.published;
+    $("formTitle").textContent = "Edit article";
+    slugEdited = true;
+    $("articleForm").classList.remove("hidden");
+    $("articleForm").scrollIntoView({behavior:"smooth", block:"start"});
+  }
+
+  if (toggle) {
+    const next = toggle.dataset.pub !== "true";
+    const {error} = await db.from("articles")
+      .update({published:next}).eq("id", toggle.dataset.toggle);
+
+    if (error) say("Publishing failed: " + error.message);
+    else say(next ? "Article is now published." : "Article is now a draft.");
+
+    await loadManageList();
+    await loadPublicArticles();
+  }
+
+  if (del) {
+    if (!confirm("Delete this article permanently?")) return;
+    const {error} = await db.from("articles")
+      .delete().eq("id", del.dataset.delete);
+
+    if (error) say("Delete failed: " + error.message);
+    else say("Article deleted.");
+
+    await loadManageList();
+    await loadPublicArticles();
+  }
+});
+
+async function start() {
+  if (!db) {
+    $("publicStatus").textContent =
+      "Supabase is not connected yet. Add your project URL and publishable key in the setup section at the bottom of index.html.";
+    return;
+  }
+
+  await loadPublicArticles();
+  await checkAdmin();
+
+  db.auth.onAuthStateChange(() => {
+    setTimeout(checkAdmin, 0);
+  });
+}
+start();
+</script>
+</body>
+</html>
